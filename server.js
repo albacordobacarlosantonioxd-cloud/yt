@@ -52,9 +52,9 @@ app.post('/api/download', async (req, res) => {
             downloadUrl: finalDownloadLink
         });
 
-        // 2. ⏳ CRONÓMETRO DE AUTO-DESTRUCCIÓN (2 MINUTOS)
-        // 2 minutos = 2 * 60 * 1000 = 120,000 milisegundos
-        console.log(`⏱️ Temporizador activado: El archivo ${outputName} se borrará en 2 minutos.`);
+        // 2. ⏳ CRONÓMETRO DE AUTO-DESTRUCCIÓN (10 MINUTOS)
+        // 10 minutos = 10 * 60 * 1000 = 600,000 milisegundos
+        console.log(`⏱️ Temporizador activado: El archivo ${outputName} se borrará en 10 minutos.`);
         
         setTimeout(() => {
             try {
@@ -65,7 +65,7 @@ app.post('/api/download', async (req, res) => {
             } catch (err) {
                 console.error("❌ Error al intentar borrar el archivo caducado:", err.message);
             }
-        }, 600000); 
+        }, 600000); // Mantenemos los 10 minutos sincronizados con el bot
     });
 });
 
