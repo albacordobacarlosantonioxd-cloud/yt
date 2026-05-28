@@ -44,16 +44,16 @@ app.post('/api/download', async (req, res) => {
 
             console.log("☁️ Enviando ráfaga de datos a la nube...");
 
-            // 🛠️ HEADERS ESPECÍFICOS PARA EVITAR ERRORES DE CONEXIÓN O RECHAZO
-            const uploadResponse = await axios.post('https://duck.opik.net/api/upload', form, {
-                headers: {
-                    ...form.getHeaders(), // Genera automáticamente el Boundary obligatorio del multipart
-                    'Accept': 'application/json',
-                    'User-Agent': 'Mozilla/5.0 (Linux; CharlyBot-Downloader; Node.js)'
-                },
-                maxContentLength: Infinity, // Evita que Axios truene si el video de 720p pesa más de 10MB
-                maxBodyLength: Infinity
-            });
+         // Cambia la URL vieja por esta de aquí abajo:
+const uploadResponse = await axios.post('https://duck.opik.net/api/files/upload', form, {
+    headers: {
+        ...form.getHeaders(),
+        'Accept': 'application/json',
+        'User-Agent': 'Mozilla/5.0 (Linux; CharlyBot-Downloader; Node.js)'
+    },
+    maxContentLength: Infinity,
+    maxBodyLength: Infinity
+});
 
             // 🧹 Borramos el video de tu PC para cuidar tu SSD inmediatamente
             fs.unlinkSync(outputPath);
