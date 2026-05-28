@@ -65,7 +65,7 @@ app.post('/api/download', async (req, res) => {
             } catch (err) {
                 console.error("❌ Error al intentar borrar el archivo caducado:", err.message);
             }
-        }, 120000); 
+        }, 600000); 
     });
 });
 
