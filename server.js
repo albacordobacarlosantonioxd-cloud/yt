@@ -30,7 +30,7 @@ app.post('/api/download', async (req, res) => {
     console.log(`\n🚀 Descargando en 720p al almacenamiento local: ${videoUrl}`);
 
     // Comando yt-dlp para forzar calidad máxima de 720p en formato MP4
-const ytdlpCommand = `yt-dlp --no-check-certificate --no-cache-dir --cookies "${path.join(__dirname, 'cookies.txt')}" -f "best[ext=mp4]/best" -o "${outputPath}" "${videoUrl}"`;
+const ytdlpCommand = `yt-dlp --list-formats --cookies "${path.join(__dirname, 'cookies.txt')}" "${videoUrl}"`;
 
     exec(ytdlpCommand, (error, stdout, stderr) => {
         if (error) {
