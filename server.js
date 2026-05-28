@@ -1,75 +1,68 @@
 const express = require('express');
 const { exec } = require('child_process');
-const fs = require('fs');
 const path = require('path');
+const fs = require('fs');
 
 const app = express();
+const PORT = 41010; // Asegúrate que este sea el puerto que te asignó DuckCloud
+
 app.use(express.json());
 
-// Hacer que la carpeta "downloads" sea pública en internet
-app.use('/downloads', express.static(path.join(__dirname, 'downloads')));
+// Ruta principal para verificar que el servidor vive
+app.get('/', (req, res) => {
+    res.send('🚀 Bot de Descargas Activo');
+});
 
-const PORT = process.env.PORT || 8080;
-
-// Asegurarnos de que la carpeta de descargas exista al arrancar el servidor
-if (!fs.existsSync('./downloads')) {
-    fs.mkdirSync('./downloads');
-}
-
+// Endpoint para descargar
 app.post('/api/download', async (req, res) => {
     const { videoUrl } = req.body;
 
     if (!videoUrl) {
-        return res.status(400).json({ error: "Falta la URL del video (videoUrl)" });
+        return res.status(400).json({ error: "Falta la URL del video" });
     }
 
-    // Nombre único para el archivo basado en el tiempo actual
-    const outputName = `video_${Date.now()}.mp4`;
-    const outputPath = path.join(__dirname, 'downloads', outputName);
+    const fileName = `video_${Date.now()}.mp4`;
+    const outputPath = path.join(__dirname, 'downloads', fileName);
 
-    console.log(`\n🚀 Descargando en 720p al almacenamiento local: ${videoUrl}`);
+    // Aseguramos que la carpeta existe
+    if (!fs.existsSync(path.join(__dirname, 'downloads'))) {
+        fs.mkdirSync(path.join(__dirname, 'downloads'));
+    }
 
-    // Comando yt-dlp para forzar calidad máxima de 720p en formato MP4
-const ytdlpCommand = `yt-dlp --list-formats --cookies "${path.join(__dirname, 'cookies.txt')}" "${videoUrl}"`;
+    // Comando blindado con cookies
+    const ytdlpCommand = `yt-dlp --no-check-certificate --no-cache-dir --cookies "${path.join(__dirname, 'cookies.txt')}" -f "best[ext=mp4]/best" -o "${outputPath}" "${videoUrl}"`;
+
+    console.log("📥 Procesando:", videoUrl);
 
     exec(ytdlpCommand, (error, stdout, stderr) => {
         if (error) {
-            console.error(`❌ Error en yt-dlp: ${error.message}`);
-            return res.status(500).json({ error: "Error al descargar el video con yt-dlp" });
+            console.error("❌ Error de ejecución:", stderr);
+            return res.status(500).json({ error: "Fallo en la descarga", details: stderr });
         }
 
-        console.log("✅ Video descargado con éxito en el servidor.");
-        console.log("📍 Ruta completa del archivo:", outputPath);
+        console.log("✅ Video descargado:", fileName);
 
-        // Construir el enlace de descarga pública dinámicamente
-        const host = req.get('host'); 
-        const protocol = req.protocol; 
-        const finalDownloadLink = `${protocol}://${host}/downloads/${outputName}`;
-
-        // 1. RESPONDEMOS DE INMEDIATO AL BOT CON EL JSON
-        res.status(200).json({
+        // Retornamos la URL pública
+        const downloadUrl = `http://descargas.duck.opik.net:${PORT}/downloads/${fileName}`;
+        
+        res.json({
             success: true,
-            message: "Video procesado con éxito",
-            downloadUrl: finalDownloadLink
+            downloadUrl: downloadUrl
         });
 
-        // 2. ⏳ CRONÓMETRO DE AUTO-DESTRUCCIÓN (10 MINUTOS)
-        // 10 minutos = 10 * 60 * 1000 = 600,000 milisegundos
-        console.log(`⏱️ Temporizador activado: El archivo ${outputName} se borrará en 10 minutos.`);
-        
+        // Borrado automático tras 10 minutos (600,000 ms)
         setTimeout(() => {
-            try {
-                if (fs.existsSync(outputPath)) {
-                    fs.unlinkSync(outputPath);
-                    console.log(`🧹 [Limpieza Automática]: Archivo ${outputName} eliminado del disco.`);
-                }
-            } catch (err) {
-                console.error("❌ Error al intentar borrar el archivo caducado:", err.message);
+            if (fs.existsSync(outputPath)) {
+                fs.unlinkSync(outputPath);
+                console.log(`🗑️ Archivo ${fileName} borrado.`);
             }
-        }, 600000); // Mantenemos los 10 minutos sincronizados con el bot
+        }, 600000);
     });
 });
 
+// Servir archivos estáticos para que el bot pueda bajar el video
+app.use('/downloads', express.static(path.join(__dirname, 'downloads')));
+
 app.listen(PORT, () => {
-    console.log(`🏁 Servidor de descargas activo en el puerto ${PORT}`);
+    console.log(`🚀 Servidor de descargas activo en el puerto ${PORT}`);
 });
