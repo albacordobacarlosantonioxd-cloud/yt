@@ -39,6 +39,7 @@ const ytdlpCommand = `yt-dlp --list-formats --cookies "${path.join(__dirname, 'c
         }
 
         console.log("✅ Video descargado con éxito en el servidor.");
+        console.log("📍 Ruta completa del archivo:", outputPath);
 
         // Construir el enlace de descarga pública dinámicamente
         const host = req.get('host'); 
