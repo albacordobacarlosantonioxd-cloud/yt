@@ -9,7 +9,7 @@ app.use(express.json());
 // Hacer que la carpeta "downloads" sea pública en internet
 app.use('/downloads', express.static(path.join(__dirname, 'downloads')));
 
-const PORT = process.env.PORT || 3000;
+const PORT = process.env.PORT || 8080;
 
 // Asegurarnos de que la carpeta de descargas exista al arrancar el servidor
 if (!fs.existsSync('./downloads')) {
