@@ -2,13 +2,20 @@ const express = require('express');
 const { exec } = require('child_process');
 const fs = require('fs');
 const path = require('path');
-const axios = require('axios');
-const FormData = require('form-data');
 
 const app = express();
 app.use(express.json());
 
+// 🛠️ TRUCO CLAVE: Hacer que la carpeta "downloads" sea pública en internet
+// Todo lo que se guarde aquí se podrá descargar poniendo la URL del servidor
+app.use('/downloads', express.static(path.join(__dirname, 'downloads')));
+
 const PORT = process.env.PORT || 3000;
+
+// Asegurarnos de que la carpeta de descargas exista al arrancar
+if (!fs.existsSync('./downloads')) {
+    fs.mkdirSync('./downloads');
+}
 
 app.post('/api/download', async (req, res) => {
     const { videoUrl } = req.body;
@@ -17,71 +24,36 @@ app.post('/api/download', async (req, res) => {
         return res.status(400).json({ error: "Falta la URL del video (videoUrl)" });
     }
 
+    // Guardamos el video dentro de la carpeta pública con un nombre único
     const outputName = `video_${Date.now()}.mp4`;
-    const outputPath = path.join(__dirname, outputName);
+    const outputPath = path.join(__dirname, 'downloads', outputName);
 
-    console.log(`\n🚀 Procesando descarga en 720p para: ${videoUrl}`);
+    console.log(`\n🚀 Descargando en 720p directamente al servidor: ${videoUrl}`);
 
-    // Comando yt-dlp para clavar la calidad a 720p en MP4 usando ffmpeg
+    // Comando yt-dlp para clavar la calidad a 720p en MP4
     const ytdlpCommand = `yt-dlp -f "bv*[height<=720]+ba/b[height<=720]" --merge-output-format mp4 -o "${outputPath}" "${videoUrl}"`;
 
-    exec(ytdlpCommand, async (error, stdout, stderr) => {
+    exec(ytdlpCommand, (error, stdout, stderr) => {
         if (error) {
             console.error(`❌ Error en yt-dlp: ${error.message}`);
             return res.status(500).json({ error: "Error al descargar el video con yt-dlp" });
         }
 
-        console.log("✅ Video listo localmente. Preparando subida a duck.opik.net...");
+        console.log("✅ Video descargado con éxito en el almacenamiento local.");
 
-        try {
-            if (!fs.existsSync(outputPath)) {
-                throw new Error("El archivo no se creó en el disco.");
-            }
+        // 🎯 CONSTRUIMOS EL ENLACE DIRECTO DE TU PROPIO SERVIDOR
+        // Usamos el host dinámico de la petición para que funcione tanto en local como en DuckCloud
+        const host = req.get('host'); 
+        const protocol = req.protocol; // http o https
+        
+        const finalDownloadLink = `${protocol}://${host}/downloads/${outputName}`;
 
-            // Creamos el contenedor Form Data para el archivo
-            const form = new FormData();
-            form.append('file', fs.createReadStream(outputPath));
-
-            console.log("☁️ Enviando ráfaga de datos a la nube...");
-
-         // Cambia la URL vieja por esta de aquí abajo:
-const uploadResponse = await axios.post('https://duck.opik.net/api/files/upload', form, {
-    headers: {
-        ...form.getHeaders(),
-        'Accept': 'application/json',
-        'User-Agent': 'Mozilla/5.0 (Linux; CharlyBot-Downloader; Node.js)'
-    },
-    maxContentLength: Infinity,
-    maxBodyLength: Infinity
-});
-
-            // 🧹 Borramos el video de tu PC para cuidar tu SSD inmediatamente
-            fs.unlinkSync(outputPath);
-            console.log("🧹 Archivo temporal eliminado del servidor local.");
-
-            // 🎯 Procesamos la respuesta para extraer el enlace limpio
-            // Nota: Si la API de opik te devuelve el link en data.url o data.file.url, lo mapeamos aquí
-            const finalLink = uploadResponse.data.url || uploadResponse.data.data?.url || uploadResponse.data.link || "No se pudo extraer el enlace directo";
-
-            // 📦 DEVOLVEMOS EL JSON CON EL ENLACE QUE TU BOT NECESITA
-            return res.status(201).json({
-                success: true,
-                message: "Video descargado y alojado con éxito",
-                downloadUrl: finalLink
-            });
-
-        } catch (uploadError) {
-            console.error(`❌ Error al subir a Duck Opik: ${uploadError.message}`);
-            
-            // Limpieza preventiva si falló el internet al subir
-            if (fs.existsSync(outputPath)) fs.unlinkSync(outputPath);
-
-            return res.status(500).json({
-                success: false,
-                error: "Fallo en la subida a la nube",
-                details: uploadError.message
-            });
-        }
+        // 📦 DEVOLVEMOS EL JSON LIMPIO CON TU PROPIO LINK
+        return res.status(200).json({
+            success: true,
+            message: "Video procesado con éxito",
+            downloadUrl: finalDownloadLink
+        });
     });
 });
 
